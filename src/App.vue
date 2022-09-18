@@ -1,28 +1,49 @@
 <template>
-  <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div>
+    <form-cmp>
+      <form-item-cmp
+        v-for="form in forms"
+        :label="form.label"
+        :type="form.type"
+        :key="form.label"
+        :width="form.width"
+        :dataIndex="form.dataIndex"
+      ></form-item-cmp>
+    </form-cmp>
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
-
+import FormCmp from "./form-cmp.vue";
+import FormItemCmp from "./form-item-cmp.vue";
 export default {
-  name: 'App',
+  name: "App",
+
   components: {
-    HelloWorld
-  }
-}
+    FormCmp,
+    FormItemCmp,
+  },
+
+  data() {
+    return {
+      visible: false,
+      forms: [],
+    };
+  },
+  mounted() {
+    this.forms = new Array(10)
+      .fill(0)
+
+      .map((_, i) => {
+        return {
+          dataIndex: i.toString(),
+          type: "input",
+          label: i.toString(),
+          width: 200,
+        };
+      });
+  },
+};
 </script>
 
-<style>
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
-}
-</style>
+<style lang="less"></style>
