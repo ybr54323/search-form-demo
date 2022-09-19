@@ -1,45 +1,151 @@
 <script>
-export default {
-  name: "App",
+import { Button } from "ant-design-vue";
+import "ant-design-vue/lib/button/style/index.css";
+import { ITEM_WIDTH, GAP } from "./const";
 
-  data() {
+export default {
+  name: "SearchForm",
+  components: {
+    [Button.name]: Button,
+  },
+  provide() {
     return {
-      visible: false,
-      cols: 0,
-      time: 0,
+      submit: this.submit,
     };
   },
+  data() {
+    return {
+      showTrigger: false,
+      //
+      visible: false,
+
+      shouldBreak: false,
+
+      cols: 0,
+      key: 0,
+    };
+  },
+  methods: {
+    submit() {
+      const formMap = this.$slots.default.reduce((map, item) => {
+        return Object.assign(map, {
+          [item.componentOptions.propsData.dataIndex]:
+            item.componentInstance.value,
+        });
+      }, {});
+      this.$emit("submit", formMap);
+    },
+    winResizeFunc() {
+      this.$nextTick(() => {
+        this.key++;
+      });
+    },
+    trigger() {
+      this.visible = !this.visible;
+      this.key++;
+    },
+  },
+  mounted() {
+    window.addEventListener("resize", this.winResizeFunc);
+  },
+  beforeDestroy() {
+    window.removeEventListener("resize", this.winResizeFunc);
+  },
   render(h) {
+    /**
+     *
+     *
+     */
     /**
      * 统计所有的width，计算出第一行能放入多少个控件
      *
      *
      */
-    const submitBoxWidth = 100;
     const that = this;
     this.$nextTick(() => {
-      if (!this.$slots.default) return;
-      this.time++;
+      const submitBoxWidth = that.visible
+        ? 0
+        : this.$refs["h-right"].offsetWidth;
+      console.warn(this.$refs["h-right"].offsetWidth);
+      if (!this.$slots.default || !this.$slots.default.length) return;
       let width;
-      console.warn((width = this.$parent.$el.offsetWidth));
-
+      console.warn(
+        (width =
+          this.$parent.$el.offsetWidth - 32) /** 2 * parent的左右内边距 */
+      );
       const headerWidth = width - submitBoxWidth;
-
       let tem = 0;
       let i = 0;
       let cols = 0;
+
       while (
-        tem + this.$slots.default[i].componentOptions.propsData.width <=
-        headerWidth
+        tem +
+          /** width */
+          (this.$slots.default[i]?.componentOptions?.propsData?.width ||
+            ITEM_WIDTH) +
+          /** padding */
+          GAP <=
+          headerWidth &&
+        i < this.$slots.default.length
       ) {
         cols++;
-        tem += this.$slots.default[i++].componentOptions.propsData.width;
+        tem +=
+          this.$slots.default[i++]?.componentOptions?.propsData?.width ||
+          ITEM_WIDTH + GAP;
       }
+      /**
+       * 当一行能全放下的时候，不要出现trigger
+       *
+       *
+       * showTrigger
+       *
+       *
+       */
       this.cols = cols;
-      // console.log(this.cols, this.time);
+      if (this.cols >= this.$slots.default.length) {
+        this.showTrigger = false;
+        this.shouldBreak = false;
+      } else {
+        this.showTrigger = true;
+        this.shouldBreak = true;
+      }
+
+      console.log(this.cols, tem);
     });
 
-    return h("div", { ref: "con", class: "con" }, [
+    const opBox = h(
+      "div",
+      {
+        class: that.visible ? "h-right active" : "h-right",
+        ref: "h-right",
+      },
+      [
+        h("a-button", {}, ["重置"]),
+        h(
+          "a-button",
+          {
+            on: {
+              click: that.submit,
+            },
+            type: "primary",
+          },
+          ["搜索"]
+        ),
+        that.showTrigger
+          ? h(
+              "a",
+              {
+                on: { click: that.trigger },
+                href: "javascript:;",
+                class: "link",
+              },
+              [that.visible ? "隐藏" : "展开"]
+            )
+          : undefined,
+      ]
+    );
+
+    return h("div", { ref: "con", class: "con", key: that.key }, [
       h("div", { class: "h" }, [
         h("div", { class: "h-left" }, [
           /**
@@ -47,76 +153,64 @@ export default {
            */
           this.$slots.default && this.$slots.default.slice(0, that.cols),
         ]),
-        h(
-          "div",
-          {
-            class: "h-right",
-            ref: "h-right",
-            on: {
-              click(e) {
-                if (e.target !== that.$refs["h-right"]) return;
-                that.visible = !that.visible;
-              },
-            },
-          },
-          [
-            h(
-              "a-button",
-              {
-                on: {
-                  click() {
-                    const formMap = that.$slots.default.reduce((map, item) => {
-                      return Object.assign(map, {
-                        [item.componentOptions.propsData.dataIndex]:
-                          item.componentInstance.value,
-                      });
-                    }, {});
+        that.visible && that.shouldBreak ? undefined : opBox,
+      ]),
 
-                    console.log(formMap);
-                  },
-                },
-              },
-              ["submit"]
-            ),
-          ]
-        ),
-      ]),
-      h("div", { class: that.visible ? "main active" : "main" }, [
-        that.cols > 0 ? that.$slots.default.slice(that.cols) : undefined,
-      ]),
+      h(
+        "div",
+        { class: that.visible && that.shouldBreak ? "main active" : "main" },
+        [
+          that.cols > 0
+            ? that.$slots.default
+                .slice(that.cols)
+                .concat(that.visible && that.shouldBreak ? opBox : undefined)
+            : undefined,
+        ]
+      ),
     ]);
   },
 };
 </script>
 
 <style lang="less" scoped>
+@import url(./const.less);
 .h {
-  display: grid;
-  grid-template-columns: 1fr 100px;
-  max-width: 100%;
+  display: flex;
+  width: 100%;
+  padding: 0 24px;
 }
 .h-left {
-  background-color: red;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  flex: 1 0 auto;
+  gap: @GAP;
   padding: 12px 0;
 }
 .h-right {
-  background-color: blue;
+  padding: 12px;
+
   display: flex;
+  flex-direction: row-reverse;
   align-items: center;
+  & > * {
+    margin-right: 12px;
+  }
+  &.active {
+    flex: 1 0 auto;
+  }
+  .link {
+    // margin-right: 12px;
+  }
 }
 .main {
-  background: green;
   max-height: 0px;
   overflow: hidden;
   transition: all 0.2s;
   display: flex;
   flex-wrap: wrap;
-
   gap: 12px;
   &.active {
+    padding: 12px 24px;
     max-height: 9999px;
   }
 }
